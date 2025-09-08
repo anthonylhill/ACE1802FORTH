@@ -63,7 +63,7 @@
 ;                    & support for Lee Hart's Membership Card Version
 ;
 ;       OTHER ACKNOWLEDGEMENTS:
-;               This code has evolved 40 years.  Other contributions may have been used but not acknowleded.
+;               This code has evolved 40 years.  Other contributions may have been used but accidentally not acknowleded.
 ;               Please contact Anthony Hill and you will be gratefully added.
 ;
 ;====================================================================
@@ -74,14 +74,16 @@
 ;    2) Predefined build otions for 
 ;           - a generice 1802 ELF 
 ;           - Lee Hart's more recent Membership Card with 7 segment LED displays
-;           - CDP1854 UART with interrrupt support ( with or without a tic timer interrupt)
+;           - CDP1854 UART with interrrupt support (with or without a hardware tic timer interrupt)
 ;    3) Modify for other 1802 hardware by changing the code at CSEND, getKey, and qTERM
-;    4) Build options for precompiled figFORTH line editor
-;    5) Build options for precompiled 1802 assembler 
-;    6) Build option to include other example code to control external hardwas ( 8255, 6818, etc)
-;    7) Full system with all options will fit into a 16K EPROM
-l    
-;    bork) This file and its documentation are available at 
+;    4) Full system with all options will fit into a 16K EPROM
+;    5) Build option to include a precompiled figFORTH line editor
+;    6) Build option to include a precompiled 1802 inline assembler 
+;    7) Build option to include other example code to control external hardwas ( 8255, 6818, etc)
+;    8) Build option to include some example Forth code screens
+;
+;
+;    This file and its documentation are available at 
 ;
 ;
 ;====================================================================
