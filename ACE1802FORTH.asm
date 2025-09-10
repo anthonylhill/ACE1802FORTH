@@ -23,7 +23,7 @@
 ;=====================================================================
 ;  FIG-FORTH for the ASSOCIATION OF COMPUTER CHIP EXPERIMMENTERS (ACE)
 ;=====================================================================
-;  
+;
 ;       THIS PUBLICATION WAS ORIGINALLY MADE AVAILABLE BY THE
 ;               FORTH INTREST GROUP
 ;               P. O. BOX 1105
@@ -57,36 +57,36 @@
 ;       OTHER MODIFICATIONS BY:
 ;               ANTHONY HILL  [ hill.anthony@outlook.com ]
 ;               ASSOCIATION OF COMPUTER CHIP EXPERIMENTERS (ACE)
-;               - including ACE hardware, ROMable code, 
-;                   interrupt driven 1854 and RTC, 
-;                    mutlitasking, hex file download, serial screen load, 
+;               - including ACE hardware, ROMable code,
+;                   interrupt driven 1854 and RTC,
+;                    mutlitasking, hex file download, serial screen load,
 ;                    & support for Lee Hart's Membership Card Version
 ;
 ;       OTHER ACKNOWLEDGEMENTS:
-;               This code has evolved 40 years.  Other contributions may have been used but accidentally not acknowleded.
-;               Please contact Anthony Hill and you will be gratefully added.
+;               This figFORTH integration has evolved 40 years.
+;               Other contributions may have been used but accidentally not acknowledged.
+;               Please contact Anthony Hill to be gratefully added to these acknowledgements
 ;
 ;====================================================================
 ;
 ;    INSTALLATION & BUILD NOTES :
-;    
+;
 ;    1) Build using the A18 assembler for the 1802 ( https://www.retrotechnology.com/memship/a18.html )
-;    2) Predefined build otions for 
-;           - a generice 1802 ELF 
-;           - Lee Hart's more recent Membership Card with 7 segment LED displays
-;           - CDP1854 UART with interrrupt support (with or without a hardware tic timer interrupt)
+;    2) Example configuratio build otions for
+;           - a generice 1802 ELF   ( uart_type and timer_type = software )
+;           - Lee Hart's more recent Membership Card with 7 segment LED displays ( uart_type = software and timer_type = hardware )
+;           - CDP1854 UART with interrrupt support ( uart_type and timer_type = software or hardware )
 ;    3) Modify for other 1802 hardware by changing the code at CSEND, getKey, and qTERM
-;    4) Full system with all options will fit into a 16K EPROM
+;    4) Full system with all options will fit into a 16K EPROM. Use the existing memory lay options or edit to suit.
 ;    5) Build option to include a precompiled figFORTH line editor
-;    6) Build option to include a precompiled 1802 inline assembler 
+;    6) Build option to include a precompiled 1802 inline assembler
 ;    7) Build option to include other example code to control external hardwas ( 8255, 6818, etc)
 ;    8) Build option to include some example Forth code screens
 ;
-;
-;    This file and its documentation are available at 
-;
+;    This file and its documentation are available at https://github.com/anthonylhill/ACE1802FORTH
 ;
 ;====================================================================
+;
 ;       1802 Register Allocations For This Version
 ;               R0    <<unused other than cold start PC >>
 ;               R1    ISR PC for task timers and / or UART (for Memebership Card, R1 = 0 disables interrupts to protect software UART)
@@ -105,8 +105,8 @@
 ;               RD    User Pointer              Up
 ;               RE    <<software UART serial code>>
 ;               RF    <<unused during cold or warm starts>>
-
-
+;
+;
 ;==========================  Useful Constants ===========================
 
 R0           EQU 0                           ;
@@ -129,26 +129,26 @@ no           EQU 0                           ;
 yes          EQU 1                           ;
 XON          EQU $11                         ;
 XOFF         EQU $13                         ;
-software     EQU 1                           ; 
-hardware     EQU 2                           ; 
+software     EQU 1                           ;
+hardware     EQU 2                           ;
 
 
 ;==========================  Build Options ==============================
 
 uart_type       equ software                 ; UART implemented in software or hardware ?
-timer_type      equ software                  ; tic timer implemented in software or hardware ?
+timer_type      equ hardware                 ; tic timer implemented in software or hardware ?
 extra_hardware  equ no                       ; no / yes  = include code for extra hardware support ACE CPU systems
-example_screens equ no                        ; no / yes  = include example Forth source screens at block -11
+example_screens equ yes                      ; no / yes  = include example Forth source screens at block -11
 
 clock_mhz       equ 4                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
 uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
 
 load_address    equ 0                         ; 0= $0000 ,   1 = $4400 , 2 = $8000
-version         equ 5 + load_address          ; version will be 5,6, or depending on load address selected
-editor          equ no                       ; 1 = include line editor code
-assembler       equ no                       ; 1 = include assembler code
-stackptr_show   equ no                       ; show top of stack address after the OK prompt
-zero_ram        equ no                        ; zero RAM at startup
+version         equ 6 + load_address          ; version will be 5,6, or depending on load address selected
+editor          equ yes                       ; yes = include line editor code
+assembler       equ yes                       ; yes = include assembler code
+stackptr_show   equ yes                       ; yes = show top of stack address after the OK prompt
+zero_ram        equ no                        ; yes = zero RAM at startup
 
 
 ;==========================  Memory Maps  =============================
@@ -167,7 +167,7 @@ rx_buffer       EQU END_OF_RAM-$0300        ;
  endi
 FIRSTB          EQU END_OF_RAM-$0400        ; used for RAM disk  : address of first disk screen #0 (unusable)
 LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; BLOCK= -11
+EXAMPLE_SCREENS EQU $3800                   ; BLOCK= -11 hex,  -17 decimal
 task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
 task2stacks     EQU END_OF_RAM-$0700        ;
 task3stacks     EQU END_OF_RAM-$0680        ;
@@ -178,7 +178,8 @@ task7stacks     EQU END_OF_RAM-$0480        ;
  endi                                       ;
 
  if load_address = 1                        ; Warning: not much RAM so assumes FORTH code built with < $3000 bytes
-                ORG $4400                   ; code start
+
+                ORG $4000                   ; code start
 START_OF_RAM    EQU $7400                   ; start of RAM area - must be on a page boundry
 END_OF_RAM      EQU $8000                   ; end of RAM block - first byte after
 S0_START        EQU END_OF_RAM-$0200        ; data stack (grows up)         S0
@@ -203,6 +204,7 @@ task7stacks     EQU END_OF_RAM-$0480        ;
 
 
  if load_address = 2                        ;
+
                 ORG $8000                   ; code start
 START_OF_RAM    EQU $C000                   ; start of RAM area - must be on a page boundry
 END_OF_RAM      EQU $FF00                   ; end of RAM block - first byte after
@@ -233,7 +235,7 @@ task7stacks     EQU END_OF_RAM-$0480        ;
 START:                                       ; entry point on power up when PC = R0
         DIS                                  ; disable interrupts / PC = R0  SP =  R0
         DB $00                               ; DIS instruction loads 0 to P and X
- if (uart_type = software)        
+ if (uart_type = software)
         SEQ                                  ; set Q high for software UART
  endi
         LDI high COLD                        ; initialize R3 as program counter
@@ -386,7 +388,7 @@ STRT1:  LDA R7                               ;
                                              ;
         LDI high ISRentry                    ; initialize R1 = ISR PC ( for UART and task timers )
         PHI R1                               ;
-        LDI low ISRentry                     ; 
+        LDI low ISRentry                     ;
         PLO R1                               ;
         LDI $23                              ; enable interrupts / PC = R3  SP =  R2
         STR R2                               ;
@@ -451,6 +453,12 @@ rx_iptr:    DB $0                           ;
 xonxoff:    DB $0                           ; set to one to force an initial XON
 tx_iptr:    DB $0                           ;
 tx_optr:    DB $0                           ;
+
+ endi
+
+ if (uart_type = software)
+
+qtermflag   DB  $00                         ; flag for indicating keyboard activity - used by ?TERMINAL word
 
  endi
 
@@ -570,15 +578,20 @@ PROM_TABLE_COLD_END:     ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
  PAGE
 ;**********************************************************************************************************************************
-;********************************************  Hardware Customization Section Starts Here********************************************
+;**************************  Hardware Customization Section for Console and Timer Starts Here**************************************
 ;**********************************************************************************************************************************
 
  if ( uart_type = software )
 
-        ;=================================================================
-        ;
-        ; KEY INPUT : software UART  via Q and EF
-        ;`
+    ; HOTE : software UART transmits the value in D out via the Q line,  receives characters via EF3
+    ;   - 1.8MHz =  5.8 2 cycle instructions per bit
+    ;   - 4.0MHz = 13.0 2 cycle instructions per bit  (add 7 2 cycle or 4 NOP + 1 2 cycle)
+
+    ;=================================================================
+    ;
+    ; KEY  : software UART  via Q and EF
+    ;`
+    ;=================================================================
                                             ;
 getKEY: GLO R1                              ; are interrupts disabled (i.e. console input in process) ?
         BZ  key_ints_off                    ; go wait for the next character if so
@@ -629,12 +642,12 @@ kdone:                                      ;
         INC R9                              ;
         STR R9                              ;
         SMI $0D                             ; was it a CR ?
-        BNZ kd1                             ; 
+        BNZ kd1                             ;
         GHI R1                              ; is there a valid ISR address in R1.1 ?
         BZ  kd1                             ; don't reenable interrupts if not - assume ints disabled via the DI word
                                             ;
         LDI low ISR                         ; re=enable interrupts if CR and they are not user disabled
-        PLO R1                              
+        PLO R1
         SEX     R3                          ; enable interrupts
         RET                                 ;
         db    $23                           ; PC = 3,  SP = 2
@@ -643,14 +656,18 @@ kd1:                                        ;
         LDI $00                             ;
         STR R9                              ;
         LBR TASKER                          ; done
-        
 
-;********************************************************** 19200 baud_rate ******
-;
+
+    ;=================================================================
+    ;
+    ;   EMIT : software UART  via Q and EF
+    ;
+    ;=================================================================
+
+
 ; software UART the value in D out on the Q line
 ;   - 1.8MHz =  5.8 2 cycle instructions per bit
 ;   - 4.0MHz = 13.0 2 cycle instructions per bit  (add 7 2 cycle or 4 NOP + 1 2 cycle)
-; Uses RE
 ;----------------------------------------------------------------------
 ;
 
@@ -746,31 +763,40 @@ STOP:   SEQ                                 ; all done so set line to idle state
         DB     $23                          ;
 no_int_enable:
         LBR TASKER                          ; done
-        
 
-        ;=================================================================
-        ;
-        ; ?TERMINAL 
+
+    ;=================================================================
+    ;
+    ; ?TERMINAL  : software UART  via Q and EF
+    ;
+    ;=================================================================
 
 qTERM:                                      ;
         INC R9                              ; prep data stack pointer
         INC R9                              ;
-        LDI $00                             ;
+        LDI $00                             ;1
         STR R9                              ;
         INC R9                              ;
-;        B4  ef4true                        ; FIXME test membership card EF4 pushbutton state
-        BR ef4true                          ; FIXME
+        LDI high qtermflag                  ; else point R7 to the ?TERMINAL flag
+        PHI R7                              ;
+        LDI low qtermflag                   ;
+        PLO R7                              ;
+        LDN R7                              ; get ?TERMINAL flag
+        BZ qT1                              ;
         LDI $01                             ;
-ef4true:                                    ;
-        STR R9                              ; save # of chars on stack ( 0 = false = not data )
+qT1:    STR R9                              ; save # of chars on stack ( 0 = false = not data )
         DEC R9                              ;
+        LDI $00                             ; clear the flag
+        STR R7                              ;
         LBR TASKER                          ; all done if buffer not empty
 
  else
-        ;=================================================================
-        ;
-        ; KEY INPUT :  CDP1854 UART Version with interrupt support
-        ;
+
+    ;=================================================================
+    ;
+    ; KEY : CDP1854 UART Version with interrupt support
+    ;
+    ;=================================================================        
 
 XOFF_LIMIT       EQU $80                     ; characters in rx buffer when XOFF sent
 XON_LIMIT        EQU $F0                     ; free space in rx buffer when XON sent
@@ -802,8 +828,8 @@ getKEY: SEX R8                              ;
         LDN R7                              ; read from rx buffer <- R7 (optr) and advance pointer
         STR R9                              ; save on data stack
                                             ;
-        LDI $00                             ;** FIXME debug - destroy the char in the buffer to make sure we are not getting repeats from there during this debug process
-        STR R7                              ;**
+        LDI $00                             ; destroy the char in the buffer to make sure we are not getting repeats from there during this debug process
+        STR R7                              ;
                                             ;
         GHI RD                              ; is virtual caps lock enabled in USER variable CAPS?
         PHI R7                              ;
@@ -827,13 +853,13 @@ filter_char:                                ;
         SMI  $08                            ;
         BZ   accept_char                    ;
         LDN  R9                             ;
-        SMI  $0E                            ; FIXME :   process SO (shift out) to disable caps lock / CTRL filters
+        SMI  $0E                            ; process SO (shift out) to disable caps lock / CTRL filters
         BNZ  not_SO                         ;
         LDI $00                             ;
         STR R7                              ;
         BR  ignore_char                     ;
 not_SO: LDN  R9                             ;
-        SMI  $0F                            ; FIXME :  process SI (shift in) to enable caps lock / CTRL filer
+        SMI  $0F                            ; process SI (shift in) to enable caps lock / CTRL filer
         BNZ  ignore_char                    ;
         LDI $01                             ;
         STR R7                              ;
@@ -845,16 +871,16 @@ ignore_char:                                ;
                                             ;
 not_ctrl:                                   ;
         LDN R9                              ;
-        ANI $80                             ; accept 7 bit ASCII only
+        ANI $80                             ; mask for 7 bit ASCII only
         BNZ ignore_char                     ;
 
- ;       LDN R9                              ;
- ;       SMI $61                             ; FIXME :  is this a lower case character?
- ;       BL  accept_char                     ;
+ ;       LDN R9                              ; Caps Lock emulation
+ ;       SMI $61                             ;
+ ;       BL  accept_char                     ; is this a lower case character?
  ;       LDN R9                              ;
  ;       SMI $7B                             ;
  ;       BGE accept_char                     ;
- ;       LDN R9                              ; FIXME :  convert to  upper case
+ ;       LDN R9                              ; convert to  upper case if so
  ;       ANI $DF                             ;
  ;       STR R9                              ;
 
@@ -894,7 +920,7 @@ accept_char:                                ;
         GLO R7                              ;
         STR R8                              ;
                                             ;
-        LDI high xonxoff+DELTA              ; clear xoff flag  (FIXME : interrupt safe ?)
+        LDI high xonxoff+DELTA              ; clear xoff flag  (Warning : is this interrupt safe ?)
         PHI R8                              ;
         LDI low xonxoff+DELTA               ;
         PLO R8                              ;
@@ -920,11 +946,11 @@ tx_active2:                                 ;
         INC R2                              ;
         LBR TASKER                          ; done
 
-;********************************************************** 1854 UART ******
-;
-; Transmit the value in D out via the 1854 UART
-;
-;----------------------------------------------------------------------
+    ;=================================================================
+    ;
+    ; EMIT : CDP1854 UART Version with interrupt support
+    ;
+    ;=================================================================
 
 CSEND:  DW $+2                            ;
         SEX R8                              ;
@@ -969,11 +995,14 @@ CSEND:  DW $+2                            ;
 tx_active1:                                 ;
         INC R2                              ;
         LBR TASKER                          ; done
-        
-        ;=================================================================
-        ;
-        ; ?TERMINAL support
 
+
+    ;=================================================================
+    ;
+    ; ?TERMINAL : CDP1854 UART Version with interrupt support
+    ;
+    ;=================================================================
+        
 qTERM:                                      ;
         SEX R8                              ;
         INC R9                              ; prep data stack pointer
@@ -993,15 +1022,14 @@ qTERM:                                      ;
 
  endi
 
- PAGE
-        DB $AA                              ; Warning - a one byte pad to make sure ISR address does not start at page bountry (membership card code needs that)
-        
+
  if (uart_type = hardware)
 
-;========================================================================================================ISR
-;               ACE CPU CARD ISR
-;========================================================================================================
-
+    ;========================================================================================================ISR
+    ;               ACE CPU CARD ISR
+    ;========================================================================================================
+    
+ PAGE
         RET                                 ; return from interrupt
 ISRentry:                                   ; use this address for R1 after a program load or reset
 ISR:                                        ; label for usual value in R1 while waiting for the next interrupt
@@ -1223,6 +1251,9 @@ ISR:                                        ; label for usual value in R1 while 
 ;========================================================================================================ISR
 ;               MEMBERSHIP CARD CARD ISR
 ;========================================================================================================
+ PAGE
+        DB $AA                              ; Warning - a one byte pad to make sure ISR address does not start at page bountry (membership card code needs that)
+
 
 ISRentry:                                   ; use this address for R1 after a program load or reset
         BN2 $                                ; wait for a digit 6 signal on EF2 so that we are sync'd the first time
@@ -1325,7 +1356,7 @@ ISR_EXIT:                                   ;
         BR ISRRET                           ;
 
  endi
- 
+
 ;**********************************************************************************************************************************
 ;********************************************  Hardware Customization Section Ends Here********************************************
 ;**********************************************************************************************************************************
@@ -1364,12 +1395,21 @@ WBR:    LDA RB                              ;
         PHI R3                              ;
         LDA RB                              ;
         PLO R3                              ;
+ if (uart_type = hardware)                  ;
         BR NEXT - 1                         ;
-
+ else
+        BN3 NEXT - 1                        ; loop back if no serial port input activity
+        LDI high qtermflag                  ; else point R7 to the ?TERMINAL flag
+        PHI R7                              ;
+        LDI low qtermflag                   ;
+        PLO R7                              ;
+        STR R7                              ; set flag to not be zero
+        BR NEXT - 1                         ;
+ endi
         ; **-----------------------------------------------------------------------------
         DB $87,"EXECUT",$C5                 ; EXECUTE
         DW LIT - 6                          ;
-EXECUTE: DW $+2                           ;
+EXECUTE: DW $+2                            ;
         LDA R9                              ;
         PHI RB                              ;
         LDN R9                              ; load W from stack
@@ -1377,13 +1417,9 @@ EXECUTE: DW $+2                           ;
         DEC R9                              ;
         DEC R9                              ;
         DEC R9                              ;
-
-        LDI low WBR                         ; Warning : speed optimization but maybe breaks if WBR crosses a page boundary
-;        INC RC                             ; point to WBR:   <-- this old code is safer but slower
-;        INC RC                             ;
-;        INC RC                             ;
-;        INC RC                             ;
-
+        LDI high WBR                        ; RC -> inner interpreter
+        PHI RC                              ;
+        LDI low WBR                         ;
         PLO RC                              ;
         SEP RC                              ;
 
@@ -1525,9 +1561,21 @@ DBAD:   LDI $00                             ;
 
         ;
         ; **-----------------------------------------------------------------------------
+        DB $82,$3B,$D3                      ; ;S (unnest)
+        DW DIGIT - 8                        ;
+sS:     DW $+2                              ;
+        INC R2                              ;
+        LDA R2                              ;
+        PLO RA                              ;
+        LDN R2                              ;
+        PHI RA                              ;
+        SEP RC                              ;
+
+        ;
+        ; **-----------------------------------------------------------------------------
         DB $87,"0BRANC",$C8                 ; 0BRANCH
-        DW DIGIT - 8                   ;
-zBRANCH: DW $+2                           ;
+        DW sS - 5                           ;
+zBRANCH: DW $+2                             ;
         SEX R9                              ;
         LDA R9                              ;
         OR                                  ;
@@ -1538,7 +1586,7 @@ zBRANCH: DW $+2                           ;
         INC RA                              ;
         INC RA                              ;
         SEP RC                              ;
-        
+
                 ;
         ; **-----------------------------------------------------------------------------
         DB $86,"BRANC",$C8                  ; BRANCH
@@ -1553,10 +1601,10 @@ BRCH1:  LDA RA                              ;
         SEP RC                              ;
         ;
         ;
-        
+
         ; **-----------------------------------------------------------------------------
         DB $86,"(FIND",$A9                  ; (FIND)
-        DW     BRANCH - 9                   ;  
+        DW     BRANCH - 9                   ;
 bFINDr: DW $+2                            ;
         SEX     R7                          ;
         LDA     R9                          ;
@@ -1829,14 +1877,14 @@ H005F:  INC R2                              ;
         LDN R2                              ;
         PHI RA                              ;
         SEP RC                              ;
-        
-                
+
+
 
         ;
         ; **-----------------------------------------------------------------------------
         DB $82,$55,$AA                      ; U*
         DW  CMOVE - 8                       ;
-Us:     DW $+2                            ; UNSIGNED 16 X 16 BIT MULTIPLY : 32 BIT PRODUCT
+Us:     DW $+2                              ; UNSIGNED 16 X 16 BIT MULTIPLY : 32 BIT PRODUCT
         SEX R9                              ;
         LDI $00                             ;
         PLO R7                              ; R7 IS LOW 2 BYTES
@@ -2001,7 +2049,7 @@ RP1A:   GLO RD                              ; RD -> USER area for initialized va
         ADI $08                             ; hard coded offset into USER area to R0
         PLO R8                              ;
         GHI RD                              ;
-        ADCI $00                            ; NOTE: this is only necessary if RD is far enough to cross a page boundary - execution time hit that can be fixed page aligning R0
+        ADCI $00                            ;
         PHI R8                              ;
         LDA R8                              ; initialze R2 as the return stack pointer  ( RP )
         PHI R2                              ;
@@ -2011,21 +2059,9 @@ RP1A:   GLO RD                              ; RD -> USER area for initialized va
 
         ;
         ; **-----------------------------------------------------------------------------
-        DB $82,$3B,$D3                      ; ;S (unnest)
-        DW RP! - 6                          ;
-sS:     DW $+2                            ;
-        INC R2                              ;
-        LDA R2                              ;
-        PLO RA                              ;
-        LDN R2                              ;
-        PHI RA                              ;
-        SEP RC                              ;
-
-        ;
-        ; **-----------------------------------------------------------------------------
         DB $85,"LEAV",$C5                   ; LEAVE
-        DW sS - 5                           ;
-LEAVE:  DW $+2                            ;
+        DW RP! - 6                          ;
+LEAVE:  DW $+2                             ;
         GHI R2                              ;
         PHI R8                              ;
         GLO R2                              ;
@@ -2462,7 +2498,7 @@ I:      DW $+2                            ;
         ; **-----------------------------------------------------------------------------
         DW $81CA                            ; J : copy the next outer loop index onto the parameter stack
         DW I - 4                            ;
-J:      DW $+2                            ;
+J:      DW $+2                              ;
         GLO R2                              ;
         PLO R8                              ;
         GHI R2                              ; set R8 = return stack pointer
@@ -3440,7 +3476,7 @@ lCODEr: DW NEST                             ;
         DW sS                               ;
         ;
         ;
-        ;  -----------------------------------------------------------------------------                        
+        ;  -----------------------------------------------------------------------------
         DB $C5,";COD",$C5                        ;  ;CODE     - used to switch from compiling Forth word to assembler mode
         DW lCODEr - 10                           ;
 sCODE:  DW NEST                                  ;
@@ -3449,7 +3485,7 @@ sCODE:  DW NEST                                  ;
         DW [                                     ;
         DW SMUDGE                                ;
         DW ASSEMBLER                             ;
-        DW sS                                    ;        
+        DW sS                                    ;
         ;
         ;
         ;  -----------------------------------------------------------------------------
@@ -3859,7 +3895,7 @@ ERR1:   DW HERE                             ; else print out the text from the c
         DW SP!                              ; reset the data stack
  if (uart_type = software)
         DW xDI                              ; disable interrupts if software UART
- endi        
+ endi
         DW BLK, a                           ; if reading from console then don't worry about screen and line # of the error
         DW zBRANCH, ERR2                    ;
                                             ;
@@ -4202,30 +4238,35 @@ DEFINITIONS:                                ;
         ;  -----------------------------------------------------------------------------
         DB $84,"QUI",$D4                    ; QUIT
         DW DEFINITIONS - 14                 ;
-QUIT:                                       ;
-        DW NEST                             ;
+QUIT:   DW NEST                             ;
         DW z                                ; 0 BLK !
         DW BLK                              ;
         DW !                                ;
         DW [                                ; [
-Q1:     DW CR                               ; CR        
+Q1:     DW CR                               ; CR
 Q1a:    DW RP!                              ; RP!
-        
+
         DW QUERY                            ; QUERY
+ if (uart_type = software)
+        DW z, LIT, qtermflag, C!            ; clear the ?TERMINAL flag
+ endi
         DW INTERPRET                        ; INTERPRET
         DW STATE                            ; STATE @ 0= 0BRANCH
         DW a                                ;
         DW ze                               ; print prompt only if no longer interpreting
         DW zBRANCH                          ;
         DW Q4                               ;
-        DW isr_status                       ;
+
+ if (uart_type = software)
+        DW isr_status                       ; check out R0
         DW zBRANCH, Q2                      ;
-        DW bvdr                             ; ." running.."
-        DB $0B,"  running.."                ;
+        DW bvdr                             ; ." tasking.."
+        DB $0B,"  tasking.."                ;
         DW BRANCH, Q1a                      ;
-        
+ endi
+
 Q2:     DW bvdr                             ; ." OK"
-        DB $04,"  OK"                       ;        
+        DB $04,"  OK"                       ;
  if stackptr_show = 1                       ;
         DW bvdr                             ; ." [ stack ]"
         DB $02," ["                         ;
@@ -4237,9 +4278,8 @@ Q2:     DW bvdr                             ; ." OK"
 Q4:     DW BRANCH                           ; LOOP BACK
         DW Q1                               ;
 
-  ;     DW sS                               ; never gets here
-
-isr_status:                                 ; helper routine to check if R1 is zero instead of holding the ISR address
+ if (uart_type = software)
+isr_status:                                ; helper routine to check if R1 is zero instead of holding the ISR address
         DW  $+2                             ;
         INC R9                              ;
         INC R9                              ;
@@ -4251,6 +4291,7 @@ isr1:   STR R9                              ; save either zero or anything else 
         DEC R9                              ;
         STR R9                              ;
         SEP RC                              ;
+ endi
         ;
         ;  **-----------------------------------------------------------------------------
         DB $85,"ABOR",$D4                   ; ABORT
@@ -4329,7 +4370,7 @@ DOTQ2:  DW sS                               ;
         ;
         ;  -----------------------------------------------------------------------------
         DB $C9,"[COMPILE",$DD               ; [COMPILE]   (IMMEDIATE)
-        DW vd - 5                           ; 
+        DW vd - 5                           ;
 [COMPILE]:                                  ;
         DW NEST                             ;
         DW mFIND                            ;
@@ -4970,7 +5011,7 @@ dS2:    DW I, PICK, Xv, bLOOPr, dS2         ;
 dS3:    DW bvdr                             ;
         DB $02, " ]"                        ;
         DW sS                               ;
-        
+
         ;
         ;  -----------------------------------------------------------------------------
         DB $85,"VLIS",$D4                   ; VLIST
@@ -5096,9 +5137,9 @@ LOAD:   DW NEST                             ;
         DB $C3,"--",$BE                     ; -->   ( continue interpretation on next screen ) IMMEDIATE
         DW LOAD - 7                         ;
 nxtSCR: DW NEST                             ;
-        DW qLOADING, z, IN, !               ; 
+        DW qLOADING, z, IN, !               ;
         DW BhSCR, BLK, a,  OVER             ;
-        DW MODD, m, BLK, p!                  ;  
+        DW MODD, m, BLK, p!                  ;
         DW sS                               ;
 
  if extra_hardware = 1
@@ -5310,7 +5351,7 @@ leda5:  DW DUP, LIT, $2D, e, zBRANCH, leda6, DROP, LIT, $0A, BRANCH, leda7  ; -
 leda6:  DW DROP, BRANCH, leda9                                              ; unprintable
 
        ;
-       ; Warning : byte ahead of 1st char is # of chars in buffer his will trigger 
+       ; Warning : byte ahead of 1st char is # of chars in buffer his will trigger
        ;           an erroneous leading decimal point if there are 46 chars in buffer
 
 leda7:  DW I, o, m, Ca                      ; check if previous character is an (ignored) decimal point
@@ -5698,14 +5739,14 @@ HLT1:   SEX R9                              ;
         ;  -----------------------------------------------------------------------------multi-tasking
         DB $85,"TASK",$A3                   ; TASK#  returns the current task number to the running task
         DW HALT-7                           ;
-TASKa:  DW $+2                            ;
-        INC R9                              ; gets the currently active tasks task number
+TASKa:  DW $+2                              ;
+        INC R9                              ; calculate the currently active task's task number
         INC R9                              ;
         LDI $00                             ; push high byte = $00 onto computation stack
         STR R9                              ;
         INC R9                              ;
         GLO R4                              ; get tasker pointer ( i.e. current offset in TASKLIST )
-        SMI low (TASKLIST + $02)            ; subtract base of table plus two as R4 was advanced on entry to this task
+        SMI low (TASKLIST + DELTA + $02)    ; subtract base of table plus two as R4 was advanced on entry to this task
         SHR                                 ; divide by 2 bytes per entry
         STR R9                              ; push the result to computation stack
         DEC R9                              ;
@@ -5713,7 +5754,7 @@ TASKa:  DW $+2                            ;
 
         ;
         ;  -----------------------------------------------------------------------------multi-tasking
-        DB $85,"STAR",$D4                   ; START fword   ( task# -- ) puts task start address into TCB
+        DB $85,"STAR",$D4                   ; START fword   ( task# -- ) puts task start address into TCBs
         DW TASKa-8                          ;
 STARTa: DW NEST                             ;
         DW mFIND                            ; find word to start
@@ -5734,28 +5775,31 @@ STARTa: DW NEST                             ;
         ;  -----------------------------------------------------------------------------multi-tasking
         DB $82,"E",$C9                      ; EI - enable interrupts
         DW STARTa-8                         ;
-xEI:     DW $+2                             ; make sure ISR address is in R1 (especially console I/O for Membership Card)
-        LDI high ISR                        ; 
-        PHI R1                              ; 
+xEI:    DW $+2                              ; make sure ISR address is in R1 (especially console I/O for Membership Card)
+        LDI high ISR                        ;
+        PHI R1                              ;
         LDI low ISR                         ;
-        PLO R1                              ; 
+        PLO R1                              ;
+ if (uart_type = hardware) or (timer_type = hardware)
         DEC R2                              ;
         SEX R2                              ;
         LDI $2C                             ;
         STR R2                              ;
         RET                                 ; essentially a SEP RC to re-enter the inner interpreter with X=2 and interrupts enabled
-
+ else
+        SEP RC                              ; Warning : does not re-enable 1802 interrupts If no hardware UART or Tic Timer
+ endi
         ;
         ;  -----------------------------------------------------------------------------multi-tasking
         DB $82,"D",$C9                      ; DI  - disable interrupts
         DW xEI-5                             ;
 xDI:     DW $+2                             ;
-        SEX R2                              ; disable 1802 interrupt 
+        SEX R2                              ; disable 1802 interrupt
         DEC R2                              ;
         LDI $23                             ;
         STR R2                              ;
-        DIS                                 ; 
-        
+        DIS                                 ;
+
  if (uart_type = software)
         LDI $00                             ; set R1 to zero to flag interrupts off for console I/O (mostly useful with Membership Card)
         PHI R1                              ;
@@ -5784,21 +5828,16 @@ TIC:    DW  $+2                             ;
         STR R7                              ; save pause interval in task time table
         LDI $38                             ;
         STR R4                              ; set task status to paused
-        
- if ( uart_type = software ) or ( uart_type = hardware )   ; FIXME
- 
+
+ if (timer_type = hardware) or (uart_type = hardware)
+
         GHI R1                              ; are interupts allowed ?
-        BZ tic0                             ; 
+        BZ tic0                             ;
         GLO R1                              ;
         BZ tic0                             ; don't re-enable if not
         RET                                 ;>>>>> interrupts on PC=3  SP=2
         DB  $23                             ;
 tic0:                                       ;
-
- else
-
- ;       RET                                 ;<<<<<<< exit critical region : iinterrupts on PC=3  SP=2
- ;       DB  $23                             ;
 
  endi
         DEC R9                              ; clean up and go to tasker for next task
@@ -5807,11 +5846,11 @@ tic0:                                       ;
         INC R4                              ;
         INC R4                              ;
         LBR TASKER                          ;
-        
+
 
         ;
         ;  -----------------------------------------------------------------------------multi-tasking
-        DB $85, "PAUS", $C5                 ; PAUSE 
+        DB $85, "PAUS", $C5                 ; PAUSE
         DW TIC-6                            ;
 PAUSE:  DW $+4                              ;
 tsk_repeat:                                 ; I/O triggers a task switch by jumping here if in a busy wait
@@ -5845,7 +5884,7 @@ TASKER: SEX R5                              ;
         PHI RA                              ;
         LDN R5                              ;
         PLO RA                              ;
-        SEP RC                              ; return to inner interpreter to activate the next task        
+        SEP RC                              ; return to inner interpreter to activate the next task
 
 ;
 ; ===========================================================================================
@@ -5944,14 +5983,14 @@ XQUIT:  DW NEST                             ;
         DW vlcdd                            ;
         DB $08,"loading>"                   ;
  endi
- if load_address = 0                        ; 
-        DW LIT, $FFEF                       ; RAM disk screen -11 on restart when ORIGIN is at $0000
+ if load_address = 0                        ;
+        DW LIT, $FFEF                       ; RAM disk screen -11 on restart when origin is at $0000
  endi
   if load_address = 1
-        DW LIT, $0000                       ; RAM disk screen -?? on restart when ORIGIN is at $4000
+        DW LIT, $0000                       ; RAM disk screen -?? on restart when origin is at $4000
  endi
  if load_address = 2
-        DW LIT, $001F                       ; RAM disk screen 31 on restart when ORIGIN is at $8000
+        DW LIT, $001F                       ; RAM disk screen 31 on restart when origin is at $8000
  endi
         DW LOAD                             ; LOAD from RAM disk
         DW CR,bvdr                          ;
@@ -6023,7 +6062,7 @@ NEXTBYTE:                                    ;
 
         ;
         ;  ---------------------------------------------------------------------------
-        DB $84,">SC",$D2                     ;  >SCR -  load Forth screen from ASCII text file
+        DB $84,">SC",$D2                     ;  >SCR -  ( scr -- ) load Forth screen from ASCII text file
         DW NEXTBYTE - 11                     ;
 tSCR:   DW NEST                              ;
         DW SPa , SO , a, m, d, m, LIT, $05, qERROR  ; if stack empty there is no screen number
@@ -6137,7 +6176,7 @@ ih04:   DW bvdr                                       ;
 
         ;
         ;  -----------------------------------------------------------------------------
-        DB $83,"IH",$BE                                ;  IH>  save to Intel Hex file
+        DB $83,"IH",$BE                                ;  IH>   ( addr n -- ) save n bytes to Intel Hex file from addr
         DW IH - 6                                     ;
 IHs:    DW NEST                                        ;
         DW  CR, z, SWAP, bDOr
@@ -6166,7 +6205,7 @@ TASK:   DW NEST                             ;
         DW sS                               ;
 
  if editor=1                                ;
- PAGE 
+ PAGE
 ;================================================================ EDITOR
 ;
 ;   Line Editor
@@ -6489,7 +6528,7 @@ T:                                          ;
    DW NEST                                  ;
    DW DUP                                   ;
    DW ChL                                   ;
-   DW f                                     ; 
+   DW f                                     ;
    DW R#                                    ;
    DW !                                     ; sets R# to start of requested line #
    DW H                                     ;
@@ -6754,7 +6793,7 @@ TILL:                                       ;
    DW sS                                    ;
         ;
         ;  -----------------------------------------------------------------------------editor
-EDITOR_LAST_WORD:                           ;        
+EDITOR_LAST_WORD:                           ;
 EDIT31:                                     ;
    DB $81,$C3                               ;  C
    DW EDIT30                                ;
@@ -6770,7 +6809,7 @@ C:                                          ;
    DW MIN                                   ;
    DW gR                                    ;
    DW R                                     ;
-   DW R#                                    ; moves R# for spreading test at cursor 
+   DW R#                                    ; moves R# for spreading test at cursor
    DW p!                                    ;
    DW R                                     ;
    DW m                                     ;
@@ -7370,9 +7409,9 @@ ASM049:                                     ;
    DW qCSP                                  ;
    DW LIT, $000C                            ; push a SEP RC
    DW SEPc                                  ;
-   
+
 ;  DW DECIMAL                               ; OPTIONAL : change to decimal and set CONTEXT=CURRENT
-;   DW CURRENT                              ; 
+;   DW CURRENT                              ;
 ;   DW a                                    ;
 ;   DW CONTEXT                              ;
 ;   DW !                                    ;
@@ -7605,7 +7644,7 @@ ASM067:                                     ;
    DW qFAULT                                ;
    DW C!                                    ;
    DW sS                                    ;
-   
+
 
         ;
         ; ------------------------------------------------------------------------------assembler
@@ -7707,7 +7746,7 @@ demo_task:
         DW LIT, LED_BUFFER+DELTA+4, DUP, op, Ca, SWAP, C!          ;  D5 -> D4
         DW LIT, LED_BUFFER+DELTA+5, C!                             ;  D0 -> D5
         DW LIT, $20 , TIC                                          ;
-        DW BRANCH, demo_task                                       ;    
+        DW BRANCH, demo_task                                       ;
  endi
 
  if (uart_type = hardware)
@@ -7718,7 +7757,7 @@ demo_task:
         DW LIT, $7F , TIC                     ;
         DW BRANCH, demo_task                ;
  endi
- 
+
   if (example_screens = yes)
 
 ;============================================================== Runtime Forth Loadable Source Screen =======
@@ -7790,8 +7829,8 @@ demo_task:
   db "                                                                "
 
  endi
- 
+
 ;=========================================================================================================================
- endi 
+ endi
 
      END                                     ;
