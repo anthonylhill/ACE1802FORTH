@@ -1,5 +1,6 @@
-
-
+;
+; r2.2
+;
 ;===================================================================
 ;
 ;                    A        CCCC     EEEEE
@@ -21,7 +22,7 @@
 ;               1   8888    00   2222
 ;
 ;=====================================================================
-;  FIG-FORTH for the ASSOCIATION OF COMPUTER CHIP EXPERIMMENTERS (ACE)
+;  FIG-FORTH for the ASSOCIATION OF COMPUTER CHIP EXPERIMENTERS (ACE)
 ;=====================================================================
 ;
 ;       THIS PUBLICATION WAS ORIGINALLY MADE AVAILABLE BY THE
@@ -51,7 +52,7 @@
 ;               CAL STATE COLLEGE
 ;               SAN BERNARDINO, A 92407
 ;
-;      Q & EF SPRTWARE UART SERIAL I/O TAKEN FROM CODE BY :
+;      Q & EF SOFTWARE UART SERIAL I/O TAKEN FROM CODE BY :
 ;               DAVID S MADOLE [ david@madole.net ]
 ;
 ;       OTHER MODIFICATIONS BY:
@@ -131,15 +132,15 @@ XON          EQU $11                         ;
 XOFF         EQU $13                         ;
 software     EQU 1                           ;
 hardware     EQU 2                           ;
-
+selectable   EQU 2                           ;
 
 ;==========================  Build Options ==============================
 
-uart_type       equ software                 ; UART implemented in software or hardware ?
-timer_type      equ hardware                 ; tic timer implemented in software or hardware ?
-extra_hardware  equ no                       ; no / yes  = include code for extra hardware support ACE CPU systems
-example_screens equ yes                      ; no / yes  = include example Forth source screens at block -11
-
+uart_type       equ software                  ; UART implemented in software or hardware ?
+timer_type      equ software                  ; tic timer implemented in software or hardware ?
+extra_hardware  equ no                        ; no / yes  = include code for extra hardware support ACE CPU systems
+example_screens equ yes                       ; no / yes  = include example Forth source screens at block -11
+autoload_screen equ selectable                ; no / yes / selectable = enable autoload of screen # on startup (selectable assumes an I/O switch)
 clock_mhz       equ 4                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
 uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
 
@@ -154,6 +155,7 @@ zero_ram        equ no                        ; yes = zero RAM at startup
 ;==========================  Memory Maps  =============================
 
  if load_address = 0                        ; ROM at $0000, RAM at $4000
+ 
                 ORG $0000                   ; code start
 START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a page bountry
 END_OF_RAM      EQU $8000                   ; end of RAM block - first byte after
@@ -165,9 +167,9 @@ TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
 tx_buffer       EQU END_OF_RAM-$0400        ; Reserve 256 bytes of RAM for UART rx and tx buffers NOTE : buffers must be on page boundaries
 rx_buffer       EQU END_OF_RAM-$0300        ;
  endi
-FIRSTB          EQU END_OF_RAM-$0400        ; used for RAM disk  : address of first disk screen #0 (unusable)
+FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; BLOCK= -11 hex,  -17 decimal
+EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
 task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
 task2stacks     EQU END_OF_RAM-$0700        ;
 task3stacks     EQU END_OF_RAM-$0680        ;
@@ -190,9 +192,9 @@ tx_buffer       EQU END_OF_RAM-$0400        ; ; Reserve 256 bytes of RAM for UAR
 rx_buffer       EQU END_OF_RAM-$0300        ;
  endi
 TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
-FIRSTB          EQU END_OF_RAM - $0400      ; used for RAM disk  : address of first disk screen #0 (unusable)
+FIRSTB          EQU END_OF_RAM - $0400      ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $7800                   ; BLOCK= ??
+EXAMPLE_SCREENS EQU $7800                   ; memory address when example screens will be stored
 task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
 task2stacks     EQU END_OF_RAM-$0700        ;
 task3stacks     EQU END_OF_RAM-$0680        ;
@@ -216,9 +218,9 @@ tx_buffer       EQU END_OF_RAM-$0400        ; ; Reserve 256 bytes of RAM for UAR
 rx_buffer       EQU END_OF_RAM-$0300        ;
  endi
 TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
-FIRSTB          EQU $4000 - $0400           ; used for RAM disk  : address of first disk screen #0 (unusable)
+FIRSTB          EQU $4000 - $0400           ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $B800                   ; BLOCK=1F  (31 decimal)
+EXAMPLE_SCREENS EQU $B800                   ; memory address when example screens will be stored
 task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
 task2stacks     EQU END_OF_RAM-$0700        ;
 task3stacks     EQU END_OF_RAM-$0680        ;
@@ -463,7 +465,7 @@ qtermflag   DB  $00                         ; flag for indicating keyboard activ
  endi
 
 TCB:    DW R0_START,          S0_START   , null_task    ; 0 - terminal task
-        DW task1stacks+$0080, task1stacks, demo_task    ; 1
+        DW task1stacks+$0080, task1stacks, null_task    ; 1
         DW task2stacks+$0080, task2stacks, null_task    ; 2
         DW task3stacks+$0080, task3stacks, null_task    ; 3
         DW task4stacks+$0080, task4stacks, null_task    ; 4
@@ -521,14 +523,10 @@ next_timer1:
 
 uart_errors DB $0, $0, $0                   ;  overrun error , parity error , framing error counters
 
- if (uart_type = software) and (timer_type = hardware)
-
 tic_scaler_preset_value EQU $2
 TIC_SCALER       DB  tic_scaler_preset_value  ; count down timer for tic update
 LED_BUF_POINTER  DB  low LED_BUFFER+DELTA     ; holds the current digit address being displayed on the six digit display
 LED_BUFFER       DB  "-Forth"                 ; allocate 6 bytes either blank or a default string
-
- endi
 
 PROM_TABLE_WARM_END
 
@@ -2643,11 +2641,27 @@ GO:     DW $+2                            ;
                                             ; 1802 HARDWARE SPECIFIC WORDS
 ;  -----------------------------------------------------------------------------
 
+
+        ;
+        ;  -----------------------------------------------------------------------------
+        DB $83,"QO",$CE                     ; QON
+        DW GO - 5                           ;
+QON:    DW $+2                              ;
+        SEQ                                 ;
+        SEP RC                              ;
+
+        ;
+        ;  -----------------------------------------------------------------------------
+        DB $84,"QOF",$C6                    ; QOFF
+        DW QON-6                            ;
+QOFF:   DW $+2                              ;
+        REQ                                 ;
+        SEP RC    
         ;
         ;  -----------------------------------------------------------------------------
         DB $83,"?E",$C6                     ; ?EF    ( -- 0x0? )  bits 3-0 = EF4 to EF1 status
-        DW GO - 5                           ;
-qEF:    DW $+2                            ;
+        DW QOFF-7                           ;
+qEF:    DW $+2                             ;
         INC R9                              ;
         INC R9                              ;
         LDI $00                             ;
@@ -2672,12 +2686,12 @@ QEF5:   STR R9                              ;
 INP:    DW $+2                            ;
         SEX R9                              ;
         INC R9                              ;
-        LDN R9                              ; safety check the port #
+        LDN R9                              ; clamp the port # so we don't blow up the computed branch below
         ANI $07                             ;
-        BNZ inp0                            ;
-        ADI $01                             ;
+        BNZ inp0                            ; check for port# = 0
+        ADI $01                             ; WARNING : cheat an make it 1 if so
 inp0:   STR R9                              ;
-inp1:   GLO R3                              ;
+inp1:   GLO R3                              ; WARNING : computed branch assumes word does not cross page boundary
         ADD                                 ;
         ADD                                 ;
         ADI inp2 - inp1 - 3                 ;
@@ -2697,17 +2711,20 @@ inp2:   INP 1                               ;
         INP 7                               ;
         DEC R9                              ;
         SEP RC                              ;
-
+err_check1:
+ if ( ((high err_check1) - (high inp0)) <> 0 )
+    BR cold  ; EPROR : off page computed branch  detected 
+ endi
         ;
         ;  -----------------------------------------------------------------------------
         DB $84,"OUT",$D0                     ; OUTP  ( data port# --  )
         DW INP-6                            ;
-OUTP:   DW $+2                            ;
+OUTP:   DW $+2                              ;
         SEX R9                              ;
         INC R9                              ;
-        LDN R9                              ; safety check the port #
+        LDN R9                              ; clamp the port # so we don't blow up the computed branch below
         ANI $07                             ;
-        BNZ outp0                            ;
+        BNZ outp0                           ;
         ADI $01                             ;
 outp0:  STR R9                              ;
 outp1:  GLO R3                              ;
@@ -2735,22 +2752,10 @@ outp2:  OUT 1                               ;
         DEC R9                              ;
         DEC R9                              ;
         SEP RC                              ;
-
-        ;
-        ;  -----------------------------------------------------------------------------
-        DB $83,"QO",$CE                     ; QON
-        DW OUTP-7                            ;
-QON:    DW $+2                            ;
-        SEQ                                 ;
-        SEP RC                              ;
-
-        ;
-        ;  -----------------------------------------------------------------------------
-        DB $84,"QOF",$C6                    ; QOFF
-        DW QON-6                            ;
-QOFF:   DW $+2                            ;
-        REQ                                 ;
-        SEP RC                              ;
+err_check2:
+ if ( ((high err_check2) - (high outp0)) <> 0 )
+    BR cold  ; EPROR : off page computed branch  detected 
+ endi
 
 ;=====================================================================================================
 
@@ -2823,7 +2828,7 @@ USER:   INC R9                              ; execution code for USER variables
         ;
         ;  -----------------------------------------------------------------------------
         DW $81B0                            ; 0
-        DW  QOFF-7                          ;
+        DW OUTP-7                           ;
 z:      DW CONST                            ;
         DW $0000                            ;
         ;
@@ -2900,6 +2905,12 @@ pORIGIN: DW NEST                            ;
         DW pORIGIN - 10                     ;
 ERRS:   DW CONST                            ;
         DW uart_errors + DELTA              ;
+        ;
+        ; **-----------------------------------------------------------------------------
+        DB $84,"LED",$D3                    ; LEDS   - address of buffer used for 7 segment display on Membership Card
+        DW ERRS - 7                         ;
+LED_ADDR: DW CONST                          ;
+        DW LED_BUFFER + DELTA               ;        
 
         ;===========================================================================================
         ; USER VARIABLES - offsets are hard coded assuming the ORIGIN offset by 3 extra words at start
@@ -2912,7 +2923,7 @@ ERRS:   DW CONST                            ;
         ; USER+0004 DW  USER area pointer
 
         DB $82,$53,$B0                      ; S0
-        DW ERRS - 7                         ;
+        DW LED_ADDR - 7                     ;
 SO:     DW USER                             ;
         DW $0006                            ;  first USER variable offset ( allow 3 words for constants listed above )
         ;
@@ -5685,7 +5696,7 @@ RTC_SET:                                    ;
 ;
 ;=====================================================================================================
 
-null_task:                                  ; null task does nothing every 64 tics but only if it gets activated via the RUN word
+null_task:                                  ; null task does nothing every 64 tics if it gets activated via the RUN word
         DW LIT, $40 , TIC                   ;
         DW BRANCH, null_task                ;
 
@@ -5965,42 +5976,33 @@ XQUIT:  DW NEST                             ;
         DW !                                ;
         DW [                                ;
         DW RP!                              ;
- if (uart_type = hardware)                  ;
-        DW qEF                              ; hardware specific options
-        DW LIT, $0008                       ; test EF4 ( dip switch selection for load from RAM disk )
-        DW FAND                             ;
-        DW zBRANCH                          ; skip RAM disk screen load
-        DW XQ2                              ;
- else
+ if (autoload_screen = no)                   ; hardware dependent option to autoload a Forth Screen on boot
         DW QUIT                             ; no extra processing if not useing extra hardware
- endi
-
-        DW FENCE, a, DP, a                  ; assume cold start if DP = FENCE
+ else
+  if (autoload_screen = selectable)
+;       DW qEF, LIT, $0008, FAND            ; EXAMPLE 1 : test EF4  - assumes a dip switch connected to EF4
+        DW LIT, 4, INP, LIT, $0001, FAND    ; EXAMPLE 2 : test lowest switch on front panel of Membership Card
+        DW zBRANCH, XQ2                     ; skip RAM disk screen load
+  endi
+        DW FENCE, a, DP, a                  ; otherwise check if cold start (i.e. DP = FENCE)
         DW m, ze, zBRANCH, XQ2              ; don't load on WARM start
-        DW CR,bvdr                          ;
+        DW CR,bvdr                          ; tell the console what autoload is happening
         DB 21,"loading from RAM disk"       ;
- if extra_hardware = 1
+  if extra_hardware = 1
         DW vlcdd                            ;
         DB $08,"loading>"                   ;
- endi
- if load_address = 0                        ;
-        DW LIT, $FFEF                       ; RAM disk screen -11 on restart when origin is at $0000
- endi
-  if load_address = 1
-        DW LIT, $0000                       ; RAM disk screen -?? on restart when origin is at $4000
- endi
- if load_address = 2
-        DW LIT, $001F                       ; RAM disk screen 31 on restart when origin is at $8000
- endi
+  endi
+        DW LIT                              ;
+        DW (EXAMPLE_SCREENS - FIRSTB)/$400  ; calculate where the example screens have been loaded
         DW LOAD                             ; LOAD from RAM disk
         DW CR,bvdr                          ;
         DB 4,"done"                         ;
- if extra_hardware = 1
+  if extra_hardware = 1
         DW vlcdd                            ;
         DB $08,"done    "                   ;
- endi
+  endi
 XQ2:    DW QUIT                             ; QUIT  - never returns
-
+ endi
         ;
         ;  -----------------------------------------------------------------------------
         DB $84,"A2H",$B1                    ; A2H1  - combines two nibbles on TOS into one byte  - used by Intel Hex Loader
@@ -7713,59 +7715,78 @@ msg31:  db  3,"31?"                                 ;
 
 ;***************************************************************************************************
 
-
-
- if (uart_type = software) and (timer_type = software)
-       ;====================================
-       ; Generic Demo Task
-       ;====================================
-
-cbuf    db 00
-
-demo_task:
-        DW LIT, cbuf                    ;
-        DW DUP, Ca, op, SWAP, C!        ;
-        DW LIT, cbuf                    ;
-        DW Ca, LIT, $04, OUTP           ;
-        DW LIT, $30 , TIC               ; DW PAUSE
-        DW BRANCH, demo_task            ;
- endi
-
- if (uart_type = software) and (timer_type = hardware)
-
-       ;====================================
-       ;  Membership Card Demo Task
-       ;====================================
-
-demo_task:
-        DW LIT, LED_BUFFER+DELTA, Ca                               ;  push D0 on stack
-        DW LIT, LED_BUFFER+DELTA,   DUP, op, Ca, SWAP, C!          ;  D1 -> D0
-        DW LIT, LED_BUFFER+DELTA+1, DUP, op, Ca, SWAP, C!          ;  D2 -> D1
-        DW LIT, LED_BUFFER+DELTA+2, DUP, op, Ca, SWAP, C!          ;  D3 -> D2
-        DW LIT, LED_BUFFER+DELTA+3, DUP, op, Ca, SWAP, C!          ;  D4 -> D3
-        DW LIT, LED_BUFFER+DELTA+4, DUP, op, Ca, SWAP, C!          ;  D5 -> D4
-        DW LIT, LED_BUFFER+DELTA+5, C!                             ;  D0 -> D5
-        DW LIT, $20 , TIC                                          ;
-        DW BRANCH, demo_task                                       ;
- endi
-
- if (uart_type = hardware)
-       ;====================================
-       ; ACE CPU Card Demo Task
-       ;====================================
-demo_task:
-        DW LIT, $7F , TIC                     ;
-        DW BRANCH, demo_task                ;
- endi
-
-  if (example_screens = yes)
-
-;============================================================== Runtime Forth Loadable Source Screen =======
-
+ if (example_screens = yes)
 
  ORG EXAMPLE_SCREENS
+ 
+;==================================Forth Loadable Demo Source Screen =======
+ 
+ if (extra_hardware = no)
+ 
+  if (timer_type = software)
+  
+ ; demo task 1- cycle front panel LEDs
+ 
 
- if (extra_hardware = yes)                                              ;   for extra hardware only - other systems won't want this
+  db "( demo task )                                                   "
+  db "                                                                "  
+  db "00 VARIABLE CBUF                                                "
+  db "                                                                "  
+  db ": DEMO_TASK                                                     "
+  db "   BEGIN   CBUF C@ 1+  CBUF C!                                  "
+  db "           CBUF C@ 04 OUTP                                      "
+  db "           30 TIC  AGAIN ;                                      "
+  db "                                                                "  
+  db " 1 START DEMO_TASK   1 RUN                                      "
+  db "                                                                "
+  db " EI                                                             "  
+  db "                                                                "
+  db ";S                                                              "
+  db "                                                                "
+  
+ else
+ 
+ ; demo task 2 - cycle 7 seqment display in Lee Hart's Membership Card
+ 
+  db "( demo task )                                                   "
+  db "                                                                "  
+  db ": DEMO_TASK                                                     "
+  db "    BEGIN                                                       "
+  db "      LEDS C@                                                   "
+  db "      5 0 DO LEDS I + DUP 1+ C@ SWAP C! LOOP                    "
+  db "      LEDS 5 + C!                                               "
+  db "      20 TIC AGAIN ;                                            "
+  db "                                                                "  
+  db "  1 START DEMO_TASK    1 RUN                                    "
+  db "                                                                "
+  db "  EI                                                            "
+  db "                                                                "      
+  db ";S                                                              "
+  db "                                                                "
+  db "                                                                "
+
+ endi
+ 
+ ; alternative screen of sample 1802 assembler code for membership card
+
+  db "HEX  0A VARIABLE byte_align                                     "
+  db ': check   20 -FIND IF DROP DUMP ELSE ." not found" ENDIF ;      '
+  db ": ALGN HERE 100 + FF00 AND HERE - byte_align @ - ALLOT ;        "
+  db "ASSEMBLER                                                       "
+  db "ALGN CODE test1  Z IF,  SEQ,   ELSE,  REQ,  ENDIF, IRX,  NEXT   "
+  db "ALGN CODE test2  BEGIN,  SEQ,  Z UNTIL, IRX,  NEXT              "
+  db "ALGN CODE test3  BEGIN,  SEQ,    AGAIN, IRX,  NEXT              "
+  db "ALGN CODE test4  BEGIN,  SEQ,  Z WHILE,  REQ, REPEAT, IRX, NEXT "
+  db "ALGN CODE >leds 9 INC, 9 LDN, STXD, IRX, 4 OUT,                 "
+  db "     9 DEC, 9 DEC, 9 DEC, 9 DEC, NEXT                           "
+  db "FORTH                                                           "
+  db ";S                                                              "
+  db "                                                                "
+  db "                                                                "
+  db "                                                                "
+  db "                                                                "  
+
+ else 
 
   db "ASSEMBLER HEX",$20
   db "CODE splitBCD  9 INC, 9 LDN, 8 PLO, F ANI, 30 ADI, 9 STR,",$20
@@ -7807,30 +7828,8 @@ demo_task:
   db "5 HALT 5 START BLINKER 5 RUN",$20
   db " ;S",$20
 
- else
-
-                                                                            ; alternative screen of sample 1802 assembler code for membership card
-
-  db "HEX  0A VARIABLE byte_align                                     "
-  db ': check   20 -FIND IF DROP DUMP ELSE ." not found" ENDIF ;      '
-  db ": ALGN HERE 100 + FF00 AND HERE - byte_align @ - ALLOT ;        "
-  db "ASSEMBLER                                                       "
-  db "ALGN CODE test1  Z IF,  SEQ,   ELSE,  REQ,  ENDIF, IRX,  NEXT   "
-  db "ALGN CODE test2  BEGIN,  SEQ,  Z UNTIL, IRX,  NEXT              "
-  db "ALGN CODE test3  BEGIN,  SEQ,    AGAIN, IRX,  NEXT              "
-  db "ALGN CODE test4  BEGIN,  SEQ,  Z WHILE,  REQ, REPEAT, IRX, NEXT "
-  db "ALGN CODE >leds 9 INC, 9 LDN, STXD, IRX, 4 OUT,                 "
-  db "     9 DEC, 9 DEC, 9 DEC, 9 DEC, NEXT                           "
-  db "FORTH                                                                "
-  db ";S                                                              "
-  db "                                                                "
-  db "                                                                "
-  db "                                                                "
-  db "                                                                "
-
  endi
-
 ;=========================================================================================================================
  endi
 
-     END                                     ;
+ END                                     ;
