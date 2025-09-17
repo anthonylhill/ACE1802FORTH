@@ -1,5 +1,5 @@
 ;
-; r2.2
+; r2.3
 ;
 ;===================================================================
 ;
@@ -128,37 +128,92 @@ RE           EQU 14                          ;
 RF           EQU 15                          ;
 no           EQU 0                           ;
 yes          EQU 1                           ;
+selectable   EQU 2                           ;
 XON          EQU $11                         ;
 XOFF         EQU $13                         ;
 software     EQU 1                           ;
 hardware     EQU 2                           ;
-selectable   EQU 2                           ;
+ram_elf      EQU 1                           ; Elf with 32K RAM at $0000
+rom_ram_elf  EQU 2                           ; Elf or Membership Card with ROM at $0000 and RAM at $8000
+ram_rom_elf  EQU 3                           ; ELF or Membership Card with ROM at $8000 and RAM at $0000
+ace_cpu_card EQU 4                           ; ACE CPU card with 16K ROM at $0000 and 48K RAM
+custom       EQU 5                           ; custom memory model 
 
-;==========================  Build Options ==============================
+
+
+;=============  Build Options : *** Edit the Configurations Options Here for Your Needs ***  ==============================
+
+memory_model    equ ram_elf                   ; ram_elf / rom_ram_elf / ram_rom_elf / ace_cpu_card / custom
 
 uart_type       equ software                  ; UART implemented in software or hardware ?
-timer_type      equ software                  ; tic timer implemented in software or hardware ?
+timer_type      equ hardware                  ; tic timer implemented in software or hardware ?
 extra_hardware  equ no                        ; no / yes  = include code for extra hardware support ACE CPU systems
 example_screens equ yes                       ; no / yes  = include example Forth source screens at block -11
-autoload_screen equ selectable                ; no / yes / selectable = enable autoload of screen # on startup (selectable assumes an I/O switch)
+autoload_screen equ selectable                ; no / yes / selectable = enable autoload of example screen on startup (selectable assumes an I/O switch)
 clock_mhz       equ 4                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
 uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
 
-load_address    equ 0                         ; 0= $0000 ,   1 = $4400 , 2 = $8000
-version         equ 6 + load_address          ; version will be 5,6, or depending on load address selected
 editor          equ yes                       ; yes = include line editor code
 assembler       equ yes                       ; yes = include assembler code
 stackptr_show   equ yes                       ; yes = show top of stack address after the OK prompt
 zero_ram        equ no                        ; yes = zero RAM at startup
+lbr_at_zero     equ no                        ; yes = insert a LBR START at $0000 (optional for memory maps where code does not start at $0000)
 
 
 ;==========================  Memory Maps  =============================
 
- if load_address = 0                        ; ROM at $0000, RAM at $4000
- 
-                ORG $0000                   ; code start
+
+ if memory_model = ram_elf                  ; simple Elf with 32K RAM at $0000
+START_OF_ROM    EQU $0000                   ; code start
 START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a page bountry
-END_OF_RAM      EQU $8000                   ; end of RAM block - first byte after
+END_OF_RAM      EQU $6000                   ; end of RAM block - first byte after
+FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
+EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored ( SCR# -25 decimal,  -19 hex)
+ endi                                       ;
+
+
+ if memory_model = rom_ram_elf              ; Elf or Membership Card with ROM at $0000 and RAM at $8000
+START_OF_ROM    EQU $0000                   ; code start
+START_OF_RAM    EQU $8000                   ; start of RAM area - must be on a page bountry
+END_OF_RAM      EQU $A000                   ; end of RAM block - first byte after
+FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
+EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
+ endi   
+ 
+ 
+ if memory_model = ram_rom_elf              ; ELF or Membership Card with ROM at $8000 and RAM at $0000
+START_OF_ROM    EQU $8000                   ; code start
+START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a page boundry
+END_OF_RAM      EQU $6000                   ; end of RAM block - first byte after
+FIRSTB          EQU END_OF_RAM  - $0400     ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
+EXAMPLE_SCREENS EQU $B800                   ; memory address when example screens will be stored (SCR#  23 decimal, 17 hex)
+ endi   
+ 
+
+ if memory_model = ace_cpu_card             ; ACE CPU card with 16K ROM at $0000 and 48K RAM
+START_OF_ROM    EQU $0000                   ; code start
+START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a page bountry
+END_OF_RAM      EQU $FF00                   ; end of RAM block - first byte after
+FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
+EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
+ endi   
+
+
+ if memory_model = custom                   ; custom memory model - edit for user system needs 
+START_OF_ROM    EQU $xxxx                   ; code start
+START_OF_RAM    EQU $yyyy                   ; start of RAM area - must be on a page boundry
+END_OF_RAM      EQU $zz00                   ; end of RAM block - first byte after
+FIRSTB          EQU $w000                   ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $yyyy                   ; end of RAM disk area  (CONSTANT variable not currently used)
+EXAMPLE_SCREENS EQU $nnnn                   ; memory address when example screens will be stored
+ endi
+ 
+;==========================  FORTH RAM Layout - change at your own risk =============================
+
 S0_START        EQU END_OF_RAM-$0200        ; data stack (grows up)         S0
 R0_START        EQU END_OF_RAM-$0101        ; return stack (grows down)     R0
 USER_START      EQU END_OF_RAM-$0100        ; USER area - 64 variables max  UP
@@ -167,9 +222,6 @@ TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
 tx_buffer       EQU END_OF_RAM-$0400        ; Reserve 256 bytes of RAM for UART rx and tx buffers NOTE : buffers must be on page boundaries
 rx_buffer       EQU END_OF_RAM-$0300        ;
  endi
-FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
-LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
 task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
 task2stacks     EQU END_OF_RAM-$0700        ;
 task3stacks     EQU END_OF_RAM-$0680        ;
@@ -177,63 +229,20 @@ task4stacks     EQU END_OF_RAM-$0600        ;
 task5stacks     EQU END_OF_RAM-$0580        ;
 task6stacks     EQU END_OF_RAM-$0500        ;
 task7stacks     EQU END_OF_RAM-$0480        ;
- endi                                       ;
 
- if load_address = 1                        ; Warning: not much RAM so assumes FORTH code built with < $3000 bytes
 
-                ORG $4000                   ; code start
-START_OF_RAM    EQU $7400                   ; start of RAM area - must be on a page boundry
-END_OF_RAM      EQU $8000                   ; end of RAM block - first byte after
-S0_START        EQU END_OF_RAM-$0200        ; data stack (grows up)         S0
-R0_START        EQU END_OF_RAM-$0101        ; return stack (grows down)     R0
-USER_START      EQU END_OF_RAM-$0100        ; USER area - 64 variables max  UP
- if (uart_type = hardware)
-tx_buffer       EQU END_OF_RAM-$0400        ; ; Reserve 256 bytes of RAM for UART rx and tx buffers NOTE : buffers must be on page boundaries
-rx_buffer       EQU END_OF_RAM-$0300        ;
+;========================== Power Up Entry Points ======================================================================
+
+ if (lbr_at_zero = yes) and (START_OF_ROM <> $0000)
+        ORG $0000                           ; optional LBR START for memory maps where code does not start at $0000 (omit for making ROMS)
+        DIS                                 ;
+        DB $00
+        LBR START
  endi
-TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
-FIRSTB          EQU END_OF_RAM - $0400      ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
-LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $7800                   ; memory address when example screens will be stored
-task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
-task2stacks     EQU END_OF_RAM-$0700        ;
-task3stacks     EQU END_OF_RAM-$0680        ;
-task4stacks     EQU END_OF_RAM-$0600        ;
-task5stacks     EQU END_OF_RAM-$0580        ;
-task6stacks     EQU END_OF_RAM-$0500        ;
-task7stacks     EQU END_OF_RAM-$0480        ;
- endi                                       ;
-
-
- if load_address = 2                        ;
-
-                ORG $8000                   ; code start
-START_OF_RAM    EQU $C000                   ; start of RAM area - must be on a page boundry
-END_OF_RAM      EQU $FF00                   ; end of RAM block - first byte after
-S0_START        EQU END_OF_RAM-$0200        ; data stack (grows up)         S0
-R0_START        EQU END_OF_RAM-$0101        ; return stack (grows down)     R0
-USER_START      EQU END_OF_RAM-$0100        ; USER area - 64 variables max  UP
- if (uart_type = hardware)
-tx_buffer       EQU END_OF_RAM-$0400        ; ; Reserve 256 bytes of RAM for UART rx and tx buffers NOTE : buffers must be on page boundaries
-rx_buffer       EQU END_OF_RAM-$0300        ;
- endi
-TIB_START       EQU END_OF_RAM-$0080        ; terminal input buffer         TIB
-FIRSTB          EQU $4000 - $0400           ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
-LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $B800                   ; memory address when example screens will be stored
-task1stacks     EQU END_OF_RAM-$0780        ; Reserve RAM for seven task stacks - task0stacks0 is the user task - uses default S0 & R0 values
-task2stacks     EQU END_OF_RAM-$0700        ;
-task3stacks     EQU END_OF_RAM-$0680        ;
-task4stacks     EQU END_OF_RAM-$0600        ;
-task5stacks     EQU END_OF_RAM-$0580        ;
-task6stacks     EQU END_OF_RAM-$0500        ;
-task7stacks     EQU END_OF_RAM-$0480        ;
- endi                                       ;
-
-
-
-;========================== Power Up Entry Point ======================================================================
-
+     
+     
+        ORG START_OF_ROM                     ; code start
+     
 START:                                       ; entry point on power up when PC = R0
         DIS                                  ; disable interrupts / PC = R0  SP =  R0
         DB $00                               ; DIS instruction loads 0 to P and X
@@ -285,7 +294,7 @@ COPYLOOP:                                    ; Copy intialization data (warm or 
         PHI RC                               ;
         LDI low NEXT                         ;
         PLO RC                               ;
-        LDI low ABRT2                        ; RA = Forth "I" Register = ABORT1
+        LDI low ABRT2                        ; RA = Forth "I" or "Instruction" Register -> ABORT + 2 (i.e. NEST is assumed)
         PLO RA                               ;
         LDI high ABRT2                       ;
         PHI RA                               ;
@@ -309,10 +318,30 @@ zrloop: LDI $00                              ;
         LDI high R0_START                    ; set R2 to return stack address
         PHI R2                               ;
         LDI low R0_START                     ;
-        PLO R2                               ;
+        PLO R2                               ;       
         SEX R3                               ; interrupts off, PC=3, SP=2
         DIS                                  ;
         DB $23                               ;
+
+;    LDI $C3     ; bork bork
+;    STR R2
+;    OUT 4
+;    DEC R2
+;    LDI $1
+;    PHI R7
+;b0: LDI $2
+;    PHI R8
+;b1: DEC R8
+;    GHI R8
+;    BNZ b1
+;    DEC R7
+;    GHI R7
+;    BNZ b0
+;    LDI $55
+;    STR R2
+;    OUT 4  
+;    DEC R2   
+        
         GLO R7                               ; NOTE : hack to make WARM start work based on where it stopped during copy of initialzed variables
         SMI low USER_IMAGE_COLD - 1          ;
         BGE warm_init                        ;
@@ -410,7 +439,7 @@ STRT1:  LDA R7                               ;
 ORIGIN   equ $ - 8                          ; CAUTION : USER variables and some initialization values are hard coded by +ORIGIN from here
                                             ; ( <-- in FIG model,  space for cold and warm start jumps was here )
         DW 1802                             ; CPU NUMBER
-        DW $0001+version                    ; REVISION NUMBER
+        DW 7 + memory_model                 ; printed version # will be 7,8,9,or 10 depending on lmemory_model selected
                                             ;
 USER_IMAGE:                                 ; base of USER area (copied to RAM @ 7F00) - USER variable are relative to the relocated address?
         DW FORTH-8+DELTA                    ; top most word in FORTH vocabulary  ( was TASK - 7 )  $407D
@@ -2025,7 +2054,7 @@ SPa:    DW $+2                            ;
         ; **-----------------------------------------------------------------------------
         DB $83,"SP",$A1                     ; SP!  <- initialize data stack pointer
         DW SPa - 6                          ;
-SP!:    DW $+2                            ;
+SP!:    DW $+2                              ;
         GLO RD                              ; RD -> USER area for initialized variables   ( UP )
         ADI $06                             ; hard coded offset into USER area to S0
         PLO R8                              ;
@@ -2053,6 +2082,13 @@ RP1A:   GLO RD                              ; RD -> USER area for initialized va
         PHI R2                              ;
         LDN R8                              ;
         PLO R2                              ;
+        
+;    SEX R2   ; 3333 bork
+;    LDI $3C 
+;    STR R2
+;    OUT 4
+;    DEC R2
+    
         SEP RC                              ;
 
         ;
@@ -2562,21 +2598,21 @@ m:       DW $+2                           ;
 FILL:   DW $+2                            ;
         INC R9                              ;
         LDN R9                              ;
-        STR R2                              ;
+        STR R2                              ; save fill byte on stack 
         DEC R9                              ;
         DEC R9                              ;
-        LDN R9                              ;
+        LDN R9                              ; get # of bytes to fill 
         PLO R7                              ;
         DEC R9                              ;
         LDN R9                              ;
-        ADI 01                              ;
-        PHI R7                              ;
+        ADI 01                              ; 
+        PHI R7                              ; R7 = # of bytes + $0100  ( so can test R7.1 to see if countdown has reached zero)
         DEC R9                              ;
-        LDN R9                              ;
+        LDN R9                              ; R8 -> fill address
         PLO R8                              ;
         DEC R9                              ;
         LDN R9                              ;
-        PHI R8                              ;
+        PHI R8                              ; 
         DEC R9                              ;
         DEC R9                              ;
 FILL1:  DEC R7                              ;
@@ -4303,7 +4339,8 @@ isr1:   STR R9                              ; save either zero or anything else 
         STR R9                              ;
         SEP RC                              ;
  endi
-        ;
+ 
+         ;
         ;  **-----------------------------------------------------------------------------
         DB $85,"ABOR",$D4                   ; ABORT
         DW QUIT - 7                         ;
@@ -4314,8 +4351,8 @@ ABRT2:  DW SP!                              ;
         DW LCD_INIT, LED_CLEAR              ;
         DW vlcdd                            ;
         DB $08,"1802 4th"                   ;
- endi    ;
-
+ endi
+                                            ;
         DW bvdr                             ;
         DB $12,XON,$0A,$0D,"FORTH 1802 V-4."  ; sneak in a XON and CR to the startup message
                                             ;
@@ -7769,7 +7806,7 @@ msg31:  db  3,"31?"                                 ;
  
  ; alternative screen of sample 1802 assembler code for membership card
 
-  db "HEX  0A VARIABLE byte_align                                     "
+  db "HEX  0A VARIABLE byte_align ( min bytes from end of page )      "
   db ': check   20 -FIND IF DROP DUMP ELSE ." not found" ENDIF ;      '
   db ": ALGN HERE 100 + FF00 AND HERE - byte_align @ - ALLOT ;        "
   db "ASSEMBLER                                                       "
