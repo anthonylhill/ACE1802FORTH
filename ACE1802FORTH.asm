@@ -140,17 +140,16 @@ ace_cpu_card EQU 4                           ; ACE CPU card with 16K ROM at $000
 custom       EQU 5                           ; custom memory model 
 
 
-
 ;=============  Build Options : *** Edit the Configurations Options Here for Your Needs ***  ==============================
 
 memory_model    equ ram_elf                   ; ram_elf / rom_ram_elf / ram_rom_elf / ace_cpu_card / custom
 
 uart_type       equ software                  ; UART implemented in software or hardware ?
-timer_type      equ hardware                  ; tic timer implemented in software or hardware ?
+timer_type      equ software                  ; tic timer implemented in software or hardware ?
 extra_hardware  equ no                        ; no / yes  = include code for extra hardware support ACE CPU systems
 example_screens equ yes                       ; no / yes  = include example Forth source screens at block -11
 autoload_screen equ selectable                ; no / yes / selectable = enable autoload of example screen on startup (selectable assumes an I/O switch)
-clock_mhz       equ 4                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
+clock_mhz       equ 1                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
 uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
 
 editor          equ yes                       ; yes = include line editor code
@@ -322,25 +321,6 @@ zrloop: LDI $00                              ;
         SEX R3                               ; interrupts off, PC=3, SP=2
         DIS                                  ;
         DB $23                               ;
-
-;    LDI $C3     ; bork bork
-;    STR R2
-;    OUT 4
-;    DEC R2
-;    LDI $1
-;    PHI R7
-;b0: LDI $2
-;    PHI R8
-;b1: DEC R8
-;    GHI R8
-;    BNZ b1
-;    DEC R7
-;    GHI R7
-;    BNZ b0
-;    LDI $55
-;    STR R2
-;    OUT 4  
-;    DEC R2   
         
         GLO R7                               ; NOTE : hack to make WARM start work based on where it stopped during copy of initialzed variables
         SMI low USER_IMAGE_COLD - 1          ;
@@ -2082,13 +2062,6 @@ RP1A:   GLO RD                              ; RD -> USER area for initialized va
         PHI R2                              ;
         LDN R8                              ;
         PLO R2                              ;
-        
-;    SEX R2   ; 3333 bork
-;    LDI $3C 
-;    STR R2
-;    OUT 4
-;    DEC R2
-    
         SEP RC                              ;
 
         ;
