@@ -1,5 +1,5 @@
 ;
-; r2.3
+; r2.4
 ;
 ;===================================================================
 ;
@@ -110,35 +110,34 @@
 ;
 ;==========================  Useful Constants ===========================
 
-R0           EQU 0                           ;
-R1           EQU 1                           ;
-R2           EQU 2                           ;
-R3           EQU 3                           ;
-R4           EQU 4                           ;
-R5           EQU 5                           ;
-R6           EQU 6                           ;
-R7           EQU 7                           ;
-R8           EQU 8                           ;
-R9           EQU 9                           ;
-RA           EQU 10                          ;
-RB           EQU 11                          ;
-RC           EQU 12                          ;
-RD           EQU 13                          ;
-RE           EQU 14                          ;
-RF           EQU 15                          ;
-no           EQU 0                           ;
-yes          EQU 1                           ;
-selectable   EQU 2                           ;
-XON          EQU $11                         ;
-XOFF         EQU $13                         ;
-software     EQU 1                           ;
-hardware     EQU 2                           ;
+R0            EQU 0                          ;
+R1            EQU 1                          ;
+R2            EQU 2                          ;
+R3            EQU 3                          ;
+R4            EQU 4                          ;
+R5            EQU 5                          ;
+R6            EQU 6                          ;
+R7            EQU 7                          ;
+R8            EQU 8                          ;
+R9            EQU 9                          ;
+RA            EQU 10                         ;
+RB            EQU 11                         ;
+RC            EQU 12                         ;
+RD            EQU 13                         ;
+RE            EQU 14                         ;
+RF            EQU 15                         ;
+no            EQU 0                          ;
+yes           EQU 1                          ;
+selectable    EQU 2                          ;
+XON           EQU $11                        ;
+XOFF          EQU $13                        ;
+software      EQU 1                          ;
+hardware      EQU 2                          ;
 ram_elf      EQU 1                           ; Elf with 32K RAM at $0000
 rom_ram_elf  EQU 2                           ; Elf or Membership Card with ROM at $0000 and RAM at $8000
 ram_rom_elf  EQU 3                           ; ELF or Membership Card with ROM at $8000 and RAM at $0000
 ace_cpu_card EQU 4                           ; ACE CPU card with 16K ROM at $0000 and 48K RAM
 custom       EQU 5                           ; custom memory model 
-
 
 ;=============  Build Options : *** Edit the Configurations Options Here for Your Needs ***  ==============================
 
@@ -147,17 +146,18 @@ memory_model    equ ram_elf                   ; ram_elf / rom_ram_elf / ram_rom_
 uart_type       equ software                  ; UART implemented in software or hardware ?
 timer_type      equ software                  ; tic timer implemented in software or hardware ?
 extra_hardware  equ no                        ; no / yes  = include code for extra hardware support ACE CPU systems
-example_screens equ yes                       ; no / yes  = include example Forth source screens at block -11
+example_screens equ yes                       ; no / yes  = include example Forth source screens at screen XSCREEN
 autoload_screen equ selectable                ; no / yes / selectable = enable autoload of example screen on startup (selectable assumes an I/O switch)
-clock_mhz       equ 1                         ; cpu clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
-uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
 
+clock_mhz       equ 1                         ; CPU clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
+uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
+                                              ;
 editor          equ yes                       ; yes = include line editor code
 assembler       equ yes                       ; yes = include assembler code
 stackptr_show   equ yes                       ; yes = show top of stack address after the OK prompt
 zero_ram        equ no                        ; yes = zero RAM at startup
 lbr_at_zero     equ no                        ; yes = insert a LBR START at $0000 (optional for memory maps where code does not start at $0000)
-
+prescaler_value equ $80                       ; prescale value for software based task tic timers
 
 ;==========================  Memory Maps  =============================
 
@@ -168,8 +168,7 @@ START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a p
 END_OF_RAM      EQU $6000                   ; end of RAM block - first byte after
 FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored ( SCR# -25 decimal,  -19 hex)
- endi                                       ;
+ endi                                        ;
 
 
  if memory_model = rom_ram_elf              ; Elf or Membership Card with ROM at $0000 and RAM at $8000
@@ -178,7 +177,6 @@ START_OF_RAM    EQU $8000                   ; start of RAM area - must be on a p
 END_OF_RAM      EQU $A000                   ; end of RAM block - first byte after
 FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
  endi   
  
  
@@ -188,7 +186,6 @@ START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a p
 END_OF_RAM      EQU $6000                   ; end of RAM block - first byte after
 FIRSTB          EQU END_OF_RAM  - $0400     ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $7FFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $B800                   ; memory address when example screens will be stored (SCR#  23 decimal, 17 hex)
  endi   
  
 
@@ -198,17 +195,23 @@ START_OF_RAM    EQU $4000                   ; start of RAM area - must be on a p
 END_OF_RAM      EQU $FF00                   ; end of RAM block - first byte after
 FIRSTB          EQU END_OF_RAM-$0400        ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $FFFF                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $3800                   ; memory address when example screens will be stored
  endi   
 
 
  if memory_model = custom                   ; custom memory model - edit for user system needs 
+START_OF_ROM    EQU $8000                   ; code start
+START_OF_RAM    EQU $C000                   ; start of RAM area - must be on a page boundry
+END_OF_RAM      EQU $E000                   ; end of RAM block - first byte after
+FIRSTB          EQU END_OF_RAM  - $0400     ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
+LIMITB          EQU $FFF0                   ; end of RAM disk area  (CONSTANT variable not currently used)
+ endi
+
+ if memory_model = -1
 START_OF_ROM    EQU $xxxx                   ; code start
 START_OF_RAM    EQU $yyyy                   ; start of RAM area - must be on a page boundry
 END_OF_RAM      EQU $zz00                   ; end of RAM block - first byte after
 FIRSTB          EQU $w000                   ; start of RAM disk : disk screen #0 is unusable so offset FIRSTB back 1K
 LIMITB          EQU $yyyy                   ; end of RAM disk area  (CONSTANT variable not currently used)
-EXAMPLE_SCREENS EQU $nnnn                   ; memory address when example screens will be stored
  endi
  
 ;==========================  FORTH RAM Layout - change at your own risk =============================
@@ -449,7 +452,8 @@ PROM_TABLE:                                 ; <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 DELTA   EQU START_OF_RAM - PROM_TABLE       ; offset to where intialized variable will be located & initialized from values stored in EPROM
 
- if (extra_hardware = yes)                  ; Note : this must be on a page boundary when moved to RAM to map 6321's ports via OUT 4 instruction
+ if (extra_hardware = yes)                  ; Note : this must be on a page boundary when moved to RAM to map 6321's ports via
+                                            ;        OUT 4 instruction
                                             ;
 PPORT:  DB $00, $00, $00, $00               ; 6845 Parrallel Port Bytes 0 - 3  ( relocates to $4000 )
 lcd_buffer  DB $0,$0,$0,$0,$0,$0,$0,$0      ; Reserve RAM for LCD display drivers
@@ -464,7 +468,7 @@ rx_iptr:    DB $0                           ;
 xonxoff:    DB $0                           ; set to one to force an initial XON
 tx_iptr:    DB $0                           ;
 tx_optr:    DB $0                           ;
-
+uart_errors: DB $0, $0, $0                   ;  overrun error , parity error , framing error counters
  endi
 
  if (uart_type = software)
@@ -473,18 +477,13 @@ qtermflag   DB  $00                         ; flag for indicating keyboard activ
 
  endi
 
-TCB:    DW R0_START,          S0_START   , null_task    ; 0 - terminal task
-        DW task1stacks+$0080, task1stacks, null_task    ; 1
-        DW task2stacks+$0080, task2stacks, null_task    ; 2
-        DW task3stacks+$0080, task3stacks, null_task    ; 3
-        DW task4stacks+$0080, task4stacks, null_task    ; 4
-        DW task5stacks+$0080, task5stacks, null_task    ; 5
-        DW task6stacks+$0080, task6stacks, null_task    ; 6
-        DW task7stacks+$0080, task7stacks, null_task    ; 7
-
-TIMERS:                                                 ;
-        DB $00, $00, $00, $00, $00, $00, $00, $00       ; task TIC timers ( Warning: must be on same page )
-
+TIMERS:                                                 ; task tic timers 
+            DB $00, $00, $00, $00, $00, $00, $00, $00   ; Warning: must all be on same page
+prescaler:  DB $00                                      ; tic timer prescaler (must be immediately after TIMERS
+ if ( ((high prescaler) - (high TIMERS)) <> 0 )
+    BR cold  ; ERROR : off page computed branch detected !!
+ endi
+ 
 TASKLIST:                                   ; tasker  ( PC= R4 - each task runs when SKP is replaced with SEP R3 - self modifying code)
         SEP R3                              ; 0
         DB low TCB+DELTA+00                 ;
@@ -503,16 +502,25 @@ TASKLIST:                                   ; tasker  ( PC= R4 - each task runs 
 TL7:    SKP                                 ; 7
         DB low TCB+DELTA+42                 ;
                                             ;
- if (timer_type = software)                   ; fake TIC_timer_update
-        LDI high TL7+DELTA                  ; R7 -> last task control block
+ if (timer_type = software)                 ; fake TIC_timer_update (hard coded branch instructions to get 
+                                            ;     around A18 limitation when TASKLIST is above $8000
+                                            ;
+        LDI high TL7+DELTA                  ; R7 -> last task  SKP / SEP RC instruction
         PHI R7                              ;
         LDI low TL7+DELTA                   ;
         PLO R7                              ;
-        LDI high TIMERS+7+DELTA             ; R8 -> task timers
+        LDI high prescaler+DELTA            ; R8 -> task timer pre-scaler (last entry in task timer block)
         PHI R8                              ;
-        LDI low TIMERS+7+DELTA              ;
+        LDI low prescaler+DELTA             ;
         PLO R8                              ;
-check_timer1:                               ;
+        LDN R8                              ; update tic timer prescaler value
+        SMI $01                             ;
+        STR R8                              ;
+        DB $3A, low (TASKLIST+DELTA)        ; BNZ don't adjust task tic timers until prescaler hits zero
+        LDI prescaler_value                 ; else reset prescaler 
+        STR R8                              ;
+        DEC R8                              ; and go update each task's tic timer
+check_timers:                               ;
         LDN R8                              ; get next timer
         DB $32, low (next_timer1+DELTA)     ; BZ to relocated address if its not running
         SMI $01                             ; decrement timer
@@ -526,14 +534,20 @@ next_timer1:
         DEC R8                              ; next timer byte
         GLO R8                              ; check if pointer back past start of table
         SMI low TIMERS+DELTA-1              ;
-        DB $3A, low (check_timer1+DELTA)    ; BNZ loop back if not at end of buffe
+        DB $3A, low (check_timers+DELTA)    ; BNZ loop back if not at end of buffer
  endi
-        DB $30, low (TASKLIST+DELTA)        ; trick the assember into creating a short branch ( Warning : must be on same page )
+        DB $30, low (TASKLIST+DELTA)        ; BR Warning : must be on same page
 
-uart_errors DB $0, $0, $0                   ;  overrun error , parity error , framing error counters
+TCB:    DW R0_START,          S0_START   , null_task    ; 0 - terminal task
+        DW task1stacks+$0080, task1stacks, null_task    ; 1
+        DW task2stacks+$0080, task2stacks, null_task    ; 2
+        DW task3stacks+$0080, task3stacks, null_task    ; 3
+        DW task4stacks+$0080, task4stacks, null_task    ; 4
+        DW task5stacks+$0080, task5stacks, null_task    ; 5
+        DW task6stacks+$0080, task6stacks, null_task    ; 6
+        DW task7stacks+$0080, task7stacks, null_task    ; 7
 
-tic_scaler_preset_value EQU $2
-TIC_SCALER       DB  tic_scaler_preset_value  ; count down timer for tic update
+
 LED_BUF_POINTER  DB  low LED_BUFFER+DELTA     ; holds the current digit address being displayed on the six digit display
 LED_BUFFER       DB  "-Forth"                 ; allocate 6 bytes either blank or a default string
 
@@ -1299,9 +1313,9 @@ NOT_DG6:                                    ;
         ADI $01                             ;
 DG_SAVE:                                    ;
         STR R7                              ;
-        LDI high TIC_SCALER+DELTA           ;
+        LDI high prescaler+DELTA           ;
         PHI R7                              ;
-        LDI low TIC_SCALER+DELTA            ;
+        LDI low prescaler+DELTA            ;
         PLO R7                              ;
         LDN R7                              ;
         SMI $01                             ;
@@ -1322,8 +1336,8 @@ DG_SAVE:                                    ;
 
 ;  Mulitasker Tic Value Update
 
-TIC_UPDATE:
-        LDI tic_scaler_preset_value         ; reset tic prescaler
+TIC_UPDATE:                                 ; reset tic prescaler
+        LDI $02                             ; Warning:  hard coded value for Membership Card
         STR R7                              ;
         LDI high TL7+DELTA                  ; R7 -> task control blocks
         PHI R7                              ;
@@ -2722,7 +2736,7 @@ inp2:   INP 1                               ;
         SEP RC                              ;
 err_check1:
  if ( ((high err_check1) - (high inp0)) <> 0 )
-    BR cold  ; EPROR : off page computed branch  detected 
+    BR cold  ; ERROR : off page computed branch detected !!
  endi
         ;
         ;  -----------------------------------------------------------------------------
@@ -2910,8 +2924,16 @@ pORIGIN: DW NEST                            ;
         DW sS                               ;
         ;
         ; **-----------------------------------------------------------------------------
+        DB $87,"XSCREE",$CE                 ; XSCREEN  ( screen number of example screen -- )
+        DW pORIGIN - 10                     ; 
+xSCR:   DW CONST                            ;
+        DW (EXAMPLE_SCREEN - FIRSTB)/$0400  ;    
+        
+ if (uart_type = hardware)
+        ;
+        ; **-----------------------------------------------------------------------------
         DB $84,"ERR",$D3                    ; ERRS
-        DW pORIGIN - 10                     ;
+        DW xSCR - 10                        ;
 ERRS:   DW CONST                            ;
         DW uart_errors + DELTA              ;
         ;
@@ -2920,7 +2942,14 @@ ERRS:   DW CONST                            ;
         DW ERRS - 7                         ;
 LED_ADDR: DW CONST                          ;
         DW LED_BUFFER + DELTA               ;        
-
+ else
+        ;
+        ; **-----------------------------------------------------------------------------
+        DB $84,"LED",$D3                    ; LEDS   - address of buffer used for 7 segment display on Membership Card
+        DW xSCR - 10                        ;
+LED_ADDR: DW CONST                          ;
+        DW LED_BUFFER + DELTA               ;        
+ endi
         ;===========================================================================================
         ; USER VARIABLES - offsets are hard coded assuming the ORIGIN offset by 3 extra words at start
         ;===========================================================================================
@@ -6002,9 +6031,8 @@ XQUIT:  DW NEST                             ;
         DW vlcdd                            ;
         DB $08,"loading>"                   ;
   endi
-        DW LIT                              ;
-        DW (EXAMPLE_SCREENS - FIRSTB)/$400  ; calculate where the example screens have been loaded
-        DW LOAD                             ; LOAD from RAM disk
+        DW xSCR                             ; constant holding screen number of example screen
+        DW LOAD                             ; 
         DW CR,bvdr                          ;
         DB 4,"done"                         ;
   if extra_hardware = 1
@@ -7722,43 +7750,44 @@ msg28:  db  3,"28?"                                 ;
 msg29:  db  21,"off page branch error"              ;
 msg30:  db  14,"divide by zero"                     ;
 msg31:  db  3,"31?"                                 ;
-
+        
 ;***************************************************************************************************
 
  if (example_screens = yes)
 
- ORG EXAMPLE_SCREENS
- 
+   BLK (($ + $0400) AND $FC00) - $                    ; align on 1K boundary
+    
+EXAMPLE_SCREEN:
 ;==================================Forth Loadable Demo Source Screen =======
  
- if (extra_hardware = no)
+  if (extra_hardware = no)
  
-  if (timer_type = software)
+   if (timer_type = software)
   
- ; demo task 1- cycle front panel LEDs
- 
-
-  db "( demo task )                                                   "
-  db "                                                                "  
-  db "00 VARIABLE CBUF                                                "
-  db "                                                                "  
-  db ": DEMO_TASK                                                     "
-  db "   BEGIN   CBUF C@ 1+  CBUF C!                                  "
-  db "           CBUF C@ 04 OUTP                                      "
-  db "           30 TIC  AGAIN ;                                      "
-  db "                                                                "  
-  db " 1 START DEMO_TASK   1 RUN                                      "
+ ; demo task 1- Larson Scanner front panel LEDs
+  
+  db ' CR ." Larson Scanner demo task loading.. "      HEX            '
   db "                                                                "
-  db " EI                                                             "  
+  db "HERE 0001 , 0204 , 0810 , 2040 , 8000 , CONSTANT B_ARRAY        "
   db "                                                                "
-  db ";S                                                              "
+  db ": DEMO_TASK BEGIN                                               "
+  db "   0A 0 DO I B_ARRAY + C@ 4 OUTP 1 TIC  LOOP                    "
+  db "   10 TIC                                                       "
+  db "   0A 0 DO 09 I - B_ARRAY + C@ 4 OUTP 1 TIC LOOP                "  
+  db "   10 TIC AGAIN ;                                               " 
+  db "                                                                "  
+  db "    1 START DEMO_TASK                                           "
+  db "    1 RUN   EI                                                  "
+  db "                                                                "
+  db " ;S                                                             "
+  db "                                                                "
   db "                                                                "
   
- else
+   else    ; timer_type
  
  ; demo task 2 - cycle 7 seqment display in Lee Hart's Membership Card
  
-  db "( demo task )                                                   "
+  db ' CR ." Membership Card demo task loading.. "      HEX           '
   db "                                                                "  
   db ": DEMO_TASK                                                     "
   db "    BEGIN                                                       "
@@ -7775,7 +7804,7 @@ msg31:  db  3,"31?"                                 ;
   db "                                                                "
   db "                                                                "
 
- endi
+   endi    ; timer_type
  
  ; alternative screen of sample 1802 assembler code for membership card
 
@@ -7796,7 +7825,7 @@ msg31:  db  3,"31?"                                 ;
   db "                                                                "
   db "                                                                "  
 
- else 
+  else   ; extra_hardware
 
   db "ASSEMBLER HEX",$20
   db "CODE splitBCD  9 INC, 9 LDN, 8 PLO, F ANI, 30 ADI, 9 STR,",$20
@@ -7838,8 +7867,16 @@ msg31:  db  3,"31?"                                 ;
   db "5 HALT 5 START BLINKER 5 RUN",$20
   db " ;S",$20
 
- endi
-;=========================================================================================================================
- endi
+  endi   ; extra_hardware
 
- END                                     ;
+ else     ; example_screens
+ 
+EXAMPLE_SCREEN: db $00   ; empty screen address to keep A18 happy
+ 
+ endi     ; example_screens
+  
+   db $00  ; Optional : tag a null on the end of the file so that the 8 LED display end up off when downloading the binary
+  
+;=========================================================================================================================   
+ 
+   END                                     ;
