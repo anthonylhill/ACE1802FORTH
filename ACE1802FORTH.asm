@@ -144,12 +144,12 @@ custom       EQU 5                           ; custom memory model
 memory_model    equ ram_elf                   ; ram_elf / rom_ram_elf / ram_rom_elf / ace_cpu_card / custom
 
 uart_type       equ software                  ; UART implemented in software or hardware ?
-timer_type      equ software                  ; tic timer implemented in software or hardware ?
+timer_type      equ hardware                  ; tic timer implemented in software or hardware ?
 extra_hardware  equ no                        ; no / yes  = include code for extra hardware support ACE CPU systems
 example_screens equ yes                       ; no / yes  = include example Forth source screens at screen XSCREEN
 autoload_screen equ selectable                ; no / yes / selectable = enable autoload of example screen on startup (selectable assumes an I/O switch)
 
-clock_mhz       equ 1                         ; CPU clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
+clock_mhz       equ 4                         ; CPU clock speed for bit bash uart timing ( 1.8 Mhz or 4 Mhz )
 uart_config     equ $3E                       ; CDP1854 control register : Interrupts enabled, 8 data bits , 2 stop bits , even parity , parity enabled
                                               ;
 editor          equ yes                       ; yes = include line editor code
@@ -549,7 +549,7 @@ TCB:    DW R0_START,          S0_START   , null_task    ; 0 - terminal task
 
 
 LED_BUF_POINTER  DB  low LED_BUFFER+DELTA     ; holds the current digit address being displayed on the six digit display
-LED_BUFFER       DB  "-Forth"                 ; allocate 6 bytes either blank or a default string
+LED_BUFFER       DB  "1802-Forth      "       ; allocate 16 bytes either blank or a default string
 
 PROM_TABLE_WARM_END
 
@@ -7792,8 +7792,8 @@ EXAMPLE_SCREEN:
   db ": DEMO_TASK                                                     "
   db "    BEGIN                                                       "
   db "      LEDS C@                                                   "
-  db "      5 0 DO LEDS I + DUP 1+ C@ SWAP C! LOOP                    "
-  db "      LEDS 5 + C!                                               "
+  db "      10 0 DO LEDS I + DUP 1+ C@ SWAP C! LOOP                    "
+  db "      LEDS 10 + C!                                               "
   db "      20 TIC AGAIN ;                                            "
   db "                                                                "  
   db "  1 START DEMO_TASK    1 RUN                                    "
