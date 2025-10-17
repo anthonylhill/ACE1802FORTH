@@ -1,5 +1,5 @@
 ;
-; r2.4
+; r2.5
 ;
 ;===================================================================
 ;
@@ -549,7 +549,7 @@ TCB:    DW R0_START,          S0_START   , null_task    ; 0 - terminal task
 
 
 LED_BUF_POINTER  DB  low LED_BUFFER+DELTA     ; holds the current digit address being displayed on the six digit display
-LED_BUFFER       DB  "1802-Forth      "       ; allocate 16 bytes either blank or a default string
+LED_BUFFER       DB  "ACE 1802 Forth      "   ; allocate 20 bytes either blank or a default string
 
 PROM_TABLE_WARM_END
 
@@ -7792,8 +7792,8 @@ EXAMPLE_SCREEN:
   db ": DEMO_TASK                                                     "
   db "    BEGIN                                                       "
   db "      LEDS C@                                                   "
-  db "      10 0 DO LEDS I + DUP 1+ C@ SWAP C! LOOP                    "
-  db "      LEDS 10 + C!                                               "
+  db "      14 0 DO LEDS I + DUP 1+ C@ SWAP C! LOOP                   "
+  db "      LEDS 14 + C!                                              "
   db "      20 TIC AGAIN ;                                            "
   db "                                                                "  
   db "  1 START DEMO_TASK    1 RUN                                    "
